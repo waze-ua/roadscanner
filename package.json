@@ -1,0 +1,13 @@
+{
+  "name": "wazeaid",
+  "version": "0.0.1",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "debug": "^3.1.0",
+    "lodash": "^4.17.4",
+    "luxon": "^0.2.12",
+    "mustache": "^2.3.0",
+    "nodemailer": "^4.4.1"
+  },
+  "description": "Server to scan Waze for road events signals and send emails to servicing companies"
+}
