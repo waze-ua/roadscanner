@@ -15,16 +15,16 @@ let smtptransport = createTransport({
     }
 });
 
-export function send(d) {
+export function sendMail(mail, event) {
     dbg(`sending mail alert`);
-    let template = readFileSync(__dirname + '/' + mailer.message.template, {encoding: 'utf-8'});
-    let message = render(template, d);
+    let template = readFileSync(__dirname + '/' + mail.template, {encoding: 'utf-8'});
+    let message = render(template, event);
     dbg(message);
 
     smtptransport.sendMail({
-        from: mailer.message.from,
-        to: mailer.message.to,
-        subject: mailer.message.subject,
+        from: mail.from,
+        to: mail.to,
+        subject: mail.subject,
         html: message
     }, (e, i) => {
         if (e) {

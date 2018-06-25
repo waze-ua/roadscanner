@@ -1,40 +1,39 @@
 'use strict';
 
 const dbg = require('debug')('scanner');
-import https from 'https';
-import http from 'http';
-import { DateTime, Settings } from 'luxon';
+const https = require('https');
+const http = require('http');
+const luxon = require('luxon');
 
-import { datetime, scanner } from './../config';
-import { send } from './mailer';
-import { find } from './phoner';
-
-// Holds pairs: reported UUID with timestamp of report
-let reported = {};
+const config = require('./../config');
+//import { sendMail } from './mailer';
 
 // Configure default time zone
-Settings.defaultZoneName = datetime.timezone;
+luxon.Settings.defaultZoneName = config.timezone;
 
-export function run() {
-    let sosdata = null;
+let uuidCache = {};
+scan();
 
-    dbg('get waze alerts');
+function scan(i) {
+    i = i || 0;
 
-    const isHttp = scanner.url.startsWith('http:');
-    const isHttps = scanner.url.startsWith('https:');
+    const region = config.scanner.regions[i];
+    const isHttp = region.url.startsWith('http:');
+    const isHttps = region.url.startsWith('https:');
 
     if (!isHttp && !isHttps)
-        throw {name: 'Wrong protocol', message: 'Protocol must be http or https'};
+        throw { name: 'Wrong protocol', message: 'Protocol must be http or https' };
+
+    dbg(`scanning region ${region.name}`);
 
     const h = isHttp ? http : https;
-
-    h.get(scanner.url, (resp) => {
-        dbg('waze response');
+    h.get(region.url, (resp) => {
+        dbg(`got response for ${region.name}`);
 
         if (resp.statusCode !== 200) {
             console.error(`HTTP status: ${resp.statusCode}`);
             resp.resume();
-            schedule();
+            nextRegion(i);
             return;
         }
 
@@ -43,78 +42,68 @@ export function run() {
         resp.on('end', () => {
             dbg('got all data')
             try {
-                sosdata = JSON.parse(rawJSON);
+                const mapdata = JSON.parse(rawJSON);
 
-                if (sosdata.alerts !== undefined) {
-                    sosdata.alerts.forEach((a) => {
-                        dbg(`alert: country=${a.country} type=${a.type} uuid=${a.uuid} type=${a.type} subtype=${a.subtype} desc="${a.reportDescription}"`);
-                        // Skip wrong country, alert type or already reported alerts
-                        if (a.country !== 'UP' || a.type !== 'SOS' || reported[a.uuid] !== undefined) {
-                            dbg('skipped...');
-                            return;
-                        }
+                if (mapdata.alerts === undefined)
+                    nextRegion(i);
 
-                        let description = a.reportDescription || '';
-                        let phones = find(description);
+                const events = mapdata.alerts.filter(eventFilter, region);
 
-                        // Send email only when SOS message has at least one phone number
-                        if (phones.length) {
-                            dbg(`phones in alert: ${phones}`);
-                            dbg(`sending mail`);
-
-                            send({
-                                type: scanner.sostypes[a.subtype] || '???',
-                                latitude: a.location.y,
-                                longitude: a.location.x,
-                                message: description,
-                                time: DateTime.local().toFormat('H:mm'),
-                                phone: phones[0] // first phone will be main phone for contacts
-                            });
-                        } else {
-                            dbg('no phones in alert')
-                        }
-
-                        dbg('uuid stored');
-                        // Store uuid as reported
-                        reported[a.uuid] = Math.floor(a.pubMillis / 1000);
-                        dbg(reported);
-                    });
+                for (event in events) {
+                    dbg('processing event: ' + event.toString());
+                    //sendMail(region.mail, event);
+                    uuidCache[region.name][event.uuid] = 1;
                 }
-            } catch(e) {
+            } catch (e) {
                 console.error(`EXCEPTION: ${e.message}`);
             }
 
-            dbg('waze data processed');
-            clearExpired();
-            schedule();
+            nextRegion(i);
         });
     });
 }
 
-// Schedule next request to Waze
-let schedule = () => { setTimeout(run, scanner.interval); };
+function nextRegion(i) {
+    if (i == config.scanner.regions.length) {
+        dbg('all regions processed');
 
-// Clear expired UUIDs
-let clearExpired = () => {
-    dbg(`cleanning expired reported uuids`);
-    const time = Math.floor(new Date() / 1000);
-    let notexpired = {};
+        // Schedule next scan
+        setTimeout(scan, config.scanner.interval * 1000);
+    } else {
+        scan(i + 1); // next region
+    }
+};
 
-    for (let k in reported) {
-        if (reported.hasOwnProperty(k)) {
-            const t = reported[k];
-            dbg(`uuid=${k} time=${t}`);
+// Filters events which not pass creterias
+// "this" is entry from regions array
+function eventFilter(event) {
+    dbg(`filtering event: ` + JSON.stringify(event));
+    const f = this.filters;
 
-            if (time < t + scanner.expire) {
-                // Item not expired, save it
-                notexpired[k] = t;
-                dbg('uuid still valid');
-            } else {
-                dbg('uuid expired');
-            }
-        }
+    Object.keys(f).forEach((key) => {
+        if (!event.hasOwnProperty(key) || !checkMatch(event[key], f[key]))
+            return false;
+    });
+
+    // Last check that uuid not in cache, which means we didn't processed it earlier
+    return !(uuidCache.hasOwnProperty(this.name) && uuidCache[this.name].hasOwnProperty(event.uuid));
+}
+
+// Check wether value passes match string
+function checkMatch(value, match) {
+    if (match.length < 2)
+        throw (`Matching rule '${match}' has incorrect format`);
+
+    const m = match.substring(1).trim();
+
+    switch (match.charAt(0)) {
+        case '=': return value === m;
+        case '!': return value !== m;
+        case '>': return value > m;
+        case '<': return value < m;
+        case '~': return value.indexOf(m) !== -1;
+        default: throw (`Matching rule '${match}' has incorrect comaprison`);
     }
 
-    dbg(`cleared ${reported.length - notexpired.length} expired item(s)`);
-    reported = notexpired;
-};
+    return false;
+}

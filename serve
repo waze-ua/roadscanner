@@ -1,3 +1,5 @@
 #!/bin/bash
 
+[ ! -e config.js ] && cp config.example.js config.js
+
 node src/scanner.js
