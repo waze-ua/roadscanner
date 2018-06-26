@@ -1,4 +1,8 @@
-/node_modules/
+# files
 package-lock.json
-message.tpl
 config.js
+*.cache
+
+# dirs
+/node_modules/
+/templates/

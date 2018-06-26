@@ -5,30 +5,39 @@ const https = require('https');
 const http = require('http');
 const luxon = require('luxon');
 
+const uniqstore = require('./uniqstore');
 const config = require('./../config');
-//import { sendMail } from './mailer';
+const mailer = require('./mailer');
 
 // Configure default time zone
 luxon.Settings.defaultZoneName = config.timezone;
 
-let uuidCache = {};
+// Here we store processed uuids by region
+const uuids = {};
+
 scan();
 
 function scan(i) {
     i = i || 0;
 
     const region = config.scanner.regions[i];
+    const regname = region.name;
     const isHttp = region.url.startsWith('http:');
     const isHttps = region.url.startsWith('https:');
 
     if (!isHttp && !isHttps)
         throw { name: 'Wrong protocol', message: 'Protocol must be http or https' };
 
-    dbg(`region: ${region.name}`);
+    dbg(`region: ${regname}`);
+
+    if (uuids[regname] === undefined) {
+        uuids[regname] = uniqstore.create({file: __appdir + '/' + regname + '.cache'});
+        uuids[regname].load();
+    }
 
     const h = isHttp ? http : https;
     h.get(region.url, (resp) => {
-        dbg(` - response`);
+        dbg(` - waze responded`);
 
         if (resp.statusCode !== 200) {
             console.error(`HTTP status: ${resp.statusCode}`);
@@ -40,7 +49,7 @@ function scan(i) {
         let rawJSON = '';
         resp.on('data', (chunk) => rawJSON += chunk);
         resp.on('end', () => {
-            dbg(' - data recieved');
+            dbg(' - waze data recieved');
             let mapdata;
             try {
                 mapdata = JSON.parse(rawJSON);
@@ -54,25 +63,34 @@ function scan(i) {
                 return;
             }
 
-            // Perform all region checks here
+            // Go through all region checks
             region.checks.forEach((check, index) => {
-                dbg(` - region check ${index}`);
+                dbg(' - region check ' + index);
 
-                const events = mapdata.alerts.filter(filterByMatch, check).filter(filterByCache, region);
+                // Get only events that do match region's check and not cached
+                const events = mapdata.alerts.reduce( (acc, ev) => {
+                        // Check if event matches conditions
+                        if (Object.keys(check.match).every(k => ev[k] !== undefined && match(ev[k], check.match[k]))) {
+                            ev.uuid = ev.uuid.replace(/-/g, ''); // we use uuid without dashes
+                            // Check that event not in cache
+                            if (uuids[regname].miss(ev.uuid)) {
+                                acc.push(ev);
+                            }
+                        }
+                        return acc;
+                    }, []);
 
                 dbg(` - - ${events.length} matched events`);
 
+                // Now email new events and put them in cache
                 events.forEach((event) => {
-                    dbg(' - - processing event: ' + event.uuid);
-                    
-                    if(!uuidCache.hasOwnProperty(region.name))
-                        uuidCache[region.name] = {};
-
-                    uuidCache[region.name][event.uuid] = 1;
-                    //sendMail(region.mail, event);
+                    uuids[regname].put(event.uuid);
+                    event.datetime = luxon.DateTime.fromMillis(event.pubMillis).toLocaleString(luxon.DateTime.DATETIME_MED); // add date&time for message
+                    mailer.sendMail(check.mail, event);
                 });
             });
 
+            uuids[regname].save();
             nextRegion(i);
         });
     });
@@ -81,7 +99,7 @@ function scan(i) {
 function nextRegion(i) {
     if (i == config.scanner.regions.length - 1) {
         dbg('all regions processed');
-        dbg('uuid cache: ' + JSON.stringify(uuidCache));
+
         // Schedule next scan
         setTimeout(scan, config.scanner.interval * 1000);
     } else {
@@ -89,20 +107,13 @@ function nextRegion(i) {
     }
 };
 
-// Filters events which do match region checks.
-// "this" points to "checks" entry from regions array
+// Filters events that don't match region checks.
+// Function's context is "check" entry from regions.
 function filterByMatch(event) {
-    const m = this.match;
-    return Object.keys(m).every((key) => event.hasOwnProperty(key) && match(event[key], m[key]));
+    return ;
 }
 
-// Filter event which not in uuid cache
-// `this` points on `region` entry
-function filterByCache(event) {
-    return !(uuidCache.hasOwnProperty(this.name) && uuidCache[this.name].hasOwnProperty(event.uuid));
-}
-
-// Check wether value passes match string
+// Check whether value passes match string
 function match(value, rule) {
     if (rule.length < 2)
         throw (`Matching rule '${rule}' has incorrect format`);
@@ -120,3 +131,4 @@ function match(value, rule) {
 
     return false;
 }
+

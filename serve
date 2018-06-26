@@ -1,5 +1,6 @@
 #!/bin/bash
 
-[ ! -e config.js ] && cp config.example.js config.js
+[ ! -e config.js ] && cp examples/config.js .
+mkdir -p templates
 
-node src/scanner.js
+node server.js

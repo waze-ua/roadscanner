@@ -1,24 +1,24 @@
-import { readFileSync } from 'fs';
+const fs = require('fs');
 const dbg = require('debug')('mailer');
-import { render } from 'mustache';
-import { createTransport } from 'nodemailer';
+const mustache = require('mustache');
+const nodemailer = require ('nodemailer');
 
-import { mailer } from './../config';
+const config = require('./../config');
 
-let smtptransport = createTransport({
-    host: mailer.smtp.host,
-    port: mailer.smtp.port,
+let smtptransport = nodemailer.createTransport({
+    host: config.smtp.host,
+    port: config.smtp.port,
     secure: true,
     auth: {
-        user: mailer.smtp.login,
-        pass: mailer.smtp.password
+        user: config.smtp.login,
+        pass: config.smtp.password
     }
 });
 
-export function sendMail(mail, event) {
+exports.sendMail = (mail, event) => {
     dbg(`sending mail alert`);
-    let template = readFileSync(__dirname + '/' + mail.template, {encoding: 'utf-8'});
-    let message = render(template, event);
+    let template = fs.readFileSync(__appdir + '/' + mail.template, {encoding: 'utf-8'});
+    let message = mustache.render(template, event);
     dbg(message);
 
     smtptransport.sendMail({
