@@ -24,11 +24,11 @@ function scan(i) {
     if (!isHttp && !isHttps)
         throw { name: 'Wrong protocol', message: 'Protocol must be http or https' };
 
-    dbg(`scanning region ${region.name}`);
+    dbg(`region: ${region.name}`);
 
     const h = isHttp ? http : https;
     h.get(region.url, (resp) => {
-        dbg(`got response for ${region.name}`);
+        dbg(` - response`);
 
         if (resp.statusCode !== 200) {
             console.error(`HTTP status: ${resp.statusCode}`);
@@ -40,23 +40,38 @@ function scan(i) {
         let rawJSON = '';
         resp.on('data', (chunk) => rawJSON += chunk);
         resp.on('end', () => {
-            dbg('got all data')
+            dbg(' - data recieved');
+            let mapdata;
             try {
-                const mapdata = JSON.parse(rawJSON);
-
-                if (mapdata.alerts === undefined)
-                    nextRegion(i);
-
-                const events = mapdata.alerts.filter(eventFilter, region);
-
-                for (event in events) {
-                    dbg('processing event: ' + event.toString());
-                    //sendMail(region.mail, event);
-                    uuidCache[region.name][event.uuid] = 1;
-                }
+                mapdata = JSON.parse(rawJSON);
             } catch (e) {
                 console.error(`EXCEPTION: ${e.message}`);
             }
+
+            if (mapdata.alerts === undefined) {
+                dbg('- no alerts in reponse')
+                nextRegion(i);
+                return;
+            }
+
+            // Perform all region checks here
+            region.checks.forEach((check, index) => {
+                dbg(` - region check ${index}`);
+
+                const events = mapdata.alerts.filter(filterByMatch, check).filter(filterByCache, region);
+
+                dbg(` - - ${events.length} matched events`);
+
+                events.forEach((event) => {
+                    dbg(' - - processing event: ' + event.uuid);
+                    
+                    if(!uuidCache.hasOwnProperty(region.name))
+                        uuidCache[region.name] = {};
+
+                    uuidCache[region.name][event.uuid] = 1;
+                    //sendMail(region.mail, event);
+                });
+            });
 
             nextRegion(i);
         });
@@ -64,9 +79,9 @@ function scan(i) {
 }
 
 function nextRegion(i) {
-    if (i == config.scanner.regions.length) {
+    if (i == config.scanner.regions.length - 1) {
         dbg('all regions processed');
-
+        dbg('uuid cache: ' + JSON.stringify(uuidCache));
         // Schedule next scan
         setTimeout(scan, config.scanner.interval * 1000);
     } else {
@@ -74,35 +89,33 @@ function nextRegion(i) {
     }
 };
 
-// Filters events which not pass creterias
-// "this" is entry from regions array
-function eventFilter(event) {
-    dbg(`filtering event: ` + JSON.stringify(event));
-    const f = this.filters;
+// Filters events which do match region checks.
+// "this" points to "checks" entry from regions array
+function filterByMatch(event) {
+    const m = this.match;
+    return Object.keys(m).every((key) => event.hasOwnProperty(key) && match(event[key], m[key]));
+}
 
-    Object.keys(f).forEach((key) => {
-        if (!event.hasOwnProperty(key) || !checkMatch(event[key], f[key]))
-            return false;
-    });
-
-    // Last check that uuid not in cache, which means we didn't processed it earlier
+// Filter event which not in uuid cache
+// `this` points on `region` entry
+function filterByCache(event) {
     return !(uuidCache.hasOwnProperty(this.name) && uuidCache[this.name].hasOwnProperty(event.uuid));
 }
 
 // Check wether value passes match string
-function checkMatch(value, match) {
-    if (match.length < 2)
-        throw (`Matching rule '${match}' has incorrect format`);
+function match(value, rule) {
+    if (rule.length < 2)
+        throw (`Matching rule '${rule}' has incorrect format`);
 
-    const m = match.substring(1).trim();
+    const m = rule.substring(1).trim();
 
-    switch (match.charAt(0)) {
+    switch (rule.charAt(0)) {
         case '=': return value === m;
         case '!': return value !== m;
         case '>': return value > m;
         case '<': return value < m;
         case '~': return value.indexOf(m) !== -1;
-        default: throw (`Matching rule '${match}' has incorrect comaprison`);
+        default: throw (`Matching rule '${rule}' has incorrect comaprison`);
     }
 
     return false;

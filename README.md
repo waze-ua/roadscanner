@@ -1,7 +1,7 @@
 Road Scanner
 ============
 
-NodeJS server for sending road reports alerts from Waze to servicing companies.
+NodeJS server for sending road reports from Waze to servicing companies.
 
 Steps to run server:
 

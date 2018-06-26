@@ -10,9 +10,10 @@ Scanner provides folloving configuration:
         name: Region's name. Used to identify region in cache and other
                 places. Must be unique and english.
         url: URL to get user reports.
-        filters: Set of filters to select reports. Only events that are matching
-                all filters will pass. Filter syntax described below.
-        mail: Email message parameters. Message template has access to all fields of each report.
+        checks: array of event checks
+            match: Set of matching rules to select reports. Only events whitch
+                    matching all rules will pass. Filter syntax described below.
+            mail: Email message parameters. Message template has access to all fields of each report.
 
 FILTERS
 Filters are pairs "name" and "match" where match starts with comparison operator and value.
@@ -26,23 +27,41 @@ Operators:
 ***/
 
 exports.scanner = {
-    interval: 60,
+    interval: 15,
     regions: [
         {
             name: "dnepr",
             url: "https://www.waze.com/row-rtserver/web/TGeoRSS?tk=community&format=JSON&left=34.67769241333008&right=35.38246536254883&bottom=48.27451331301162&top=48.64715978672313",
-            filters: {
-                country: "=UP",
-                city: "=Днепр",
-                subtype: "=HAZARD_ON_ROAD_TRAFFIC_LIGHT_FAULT",
-                nThumbsUp: ">-1"
-            },
-            mail: {
-                from: "example@gmail.com",
-                to: "sos@sos-service.com",
-                subject: "Waze users report",
-                template: "message.tpl",
-            }
+            checks: [
+                {   // check for broken traffic lights
+                    match: {
+                        country: "=UP",
+                        city: "=Дніпро",
+                        subtype: "=HAZARD_ON_ROAD_TRAFFIC_LIGHT_FAULT",
+                        nThumbsUp: ">-1"
+                    },
+                    mail: {
+                        from: "example@gmail.com",
+                        to: "info@lightservice.ua",
+                        subject: "Waze users traffic light report",
+                        template: "message.tpl",
+                    }        
+                },
+                {   // check for road holes
+                    match: {
+                        country: "=UP",
+                        city: "=Дніпро",
+                        subtype: "=HAZARD_ON_ROAD_POT_HOLE",
+                        nThumbsUp: ">-1"
+                    },
+                    mail: {
+                        from: "example@gmail.com",
+                        to: "info@holeservice.us",
+                        subject: "Waze users road hole report",
+                        template: "message.tpl",
+                    }        
+                }
+            ],
         }
     ]
 };
