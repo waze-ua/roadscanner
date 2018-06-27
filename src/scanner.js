@@ -11,6 +11,7 @@ const mailer = require('./mailer');
 
 // Configure default time zone
 luxon.Settings.defaultZoneName = config.timezone;
+luxon.Settings.defaultLocale = config.scanner.locale;
 
 // Here we store processed uuids by region
 const uuids = {};
