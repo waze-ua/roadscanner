@@ -32,7 +32,7 @@ Matches are comparing alert fields with a "match" string that starts with one of
 ***/
 
 exports.scanner = {
-    locale: 'ua_UA',
+    locale: 'ua-UA',
     interval: 15,
     regions: [
         {
@@ -50,8 +50,8 @@ exports.scanner = {
                         from: "info@waze.com.ua",
                         to: "info@lightservice.ua",
                         subject: "[Waze] Повідомлення про яму",
-                        template: "road-hole-event.tpl",
-                    }        
+                        template: "templates/road-hole-event.tpl",
+                    }
                 }
             ],
         },
@@ -70,8 +70,8 @@ exports.scanner = {
                         from: "info@waze.com.ua",
                         to: "info@holeservice.us",
                         subject: "[Waze] Повідомлення про світлофор",
-                        template: "traffic-light-event.tpl",
-                    }        
+                        template: "templates/traffic-light-event.tpl",
+                    }
                 }
             ]
         }
