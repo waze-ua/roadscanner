@@ -2,8 +2,8 @@
 
 exports.timezone = 'Europe/Kiev';
 exports.smtp = {
-    login: "user",
-    password: "password",
+    login: "wazeukraine@gmail.com",
+    password: "Hflbjkjrfwbz2010",
     host: "smtp.gmail.com",
     port: 465
 };
@@ -47,8 +47,8 @@ exports.scanner = {
                         nThumbsUp: ">-1"
                     },
                     mail: {
-                        from: "info@waze.com.ua",
-                        to: "info@lightservice.ua",
+                        from: "wazeukraine@gmail.com",
+                        to: "lexsms@gmail.com",
                         subject: "[Waze] Повідомлення про яму",
                         template: "templates/road-hole-event.tpl",
                     }
@@ -67,8 +67,8 @@ exports.scanner = {
                         nThumbsUp: ">-1"
                     },
                     mail: {
-                        from: "info@waze.com.ua",
-                        to: "info@holeservice.us",
+                        from: "wazeukraine@gmail.com",
+                        to: "lexsms@gmail.com",
                         subject: "[Waze] Повідомлення про світлофор",
                         template: "templates/traffic-light-event.tpl",
                     }
