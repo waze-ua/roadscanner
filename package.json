@@ -4,9 +4,12 @@
   "license": "GPL-3.0",
   "dependencies": {
     "debug": "^3.1.0",
+    "express": "^4.16.3",
+    "express-session": "^1.15.6",
     "luxon": "^0.2.12",
     "mustache": "^2.3.0",
-    "nodemailer": "^4.4.1"
+    "nodemailer": "^4.4.1",
+    "tingodb": "^0.6.1"
   },
   "description": "Server to scan Waze for road events and send emails to servicing companies"
 }

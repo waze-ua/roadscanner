@@ -3,4 +3,4 @@
 [ ! -e config.js ] && cp examples/config.js .
 mkdir -p templates
 
-node server.js
+node roadscanner.js
