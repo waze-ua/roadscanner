@@ -19,7 +19,6 @@ exports.sendMail = (mail, event) => {
     dbg(`sending mail alert`);
     let template = fs.readFileSync(__appdir + '/' + mail.template, {encoding: 'utf-8'});
     let message = mustache.render(template, event);
-    dbg(message);
 
     smtptransport.sendMail({
         from: mail.from,
