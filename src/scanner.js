@@ -86,7 +86,8 @@ function scan(i) {
                 // Now email new events and put them in cache
                 events.forEach((event) => {
                     uuids[regname].put(event.uuid);
-                    event.datetime = luxon.DateTime.fromMillis(event.pubMillis).toLocaleString(luxon.DateTime.DATETIME_MED); // add date&time for message
+                    // waze feed misses date-time field, so we add our own to be used in template
+                    event.datetime = luxon.DateTime.fromMillis(event.pubMillis).toFormat("dd.MM.yyyy о HH:mm");
                     mailer.sendMail(check.mail, event);
                 });
             });
