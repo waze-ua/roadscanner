@@ -2,7 +2,7 @@
 
 <p>{{datetime}} було зафіксовано повідомлення про непрацюючий світлофор</p>
 
-<p><a href='https://www.waze.com/uk/livemap?zoom=15&lat={{location.y}}&lon={{location.x}}'>Координати події</a></p>
+<p><a href='https://www.waze.com/uk/livemap?zoom=17&lat={{location.y}}&lon={{location.x}}'>Координати події</a></p>
 
 {{#imageUrl}}
 <p><a href="{{imageUrl}}">Переглянути зображення</a>.</p>

@@ -16,20 +16,40 @@ let smtptransport = nodemailer.createTransport({
 });
 
 exports.sendMail = (mail, event) => {
-    dbg(`sending mail alert`);
     let template = fs.readFileSync(__appdir + '/' + mail.template, {encoding: 'utf-8'});
     let message = mustache.render(template, event);
 
-    smtptransport.sendMail({
-        from: mail.from,
-        to: mail.to,
-        subject: mail.subject,
-        html: message
-    }, (e, i) => {
-        if (e) {
-            dbg('mail delivery failed');
-            dbg(e);
-            dbg(i);
-        }
+    if (typeof mail.to === 'string') {
+        dbg(`sending to ${mail.to}`);
+        smtptransport.sendMail({
+            from: mail.from,
+            to: mail.to,
+            subject: mail.subject,
+            html: message
+        }, (e, i) => {
+            if (e) {
+                dbg(`mail delivery failed to ${mail.to}`);
+                dbg(e);
+                dbg(i);
+            }
+        });
+        return;
+    }
+
+    // mail.to has several recipients, send message to each one
+    mail.to.forEach(to => {
+        dbg(`sending to ${to}`);
+        smtptransport.sendMail({
+            from: mail.from,
+            to: to,
+            subject: mail.subject,
+            html: message
+        }, (e, i) => {
+            if (e) {
+                dbg(`mail delivery failed to ${to}`);
+                dbg(e);
+                dbg(i);
+            }
+        });
     });
 }
