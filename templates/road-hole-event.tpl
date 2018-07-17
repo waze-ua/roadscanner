@@ -1,6 +1,6 @@
 <p>Увага!</p>
 
-<p>{{datetime}} було зафіксовано повідомлення про вибоїну</p>
+<p>{{datetime}} на {{street}} було зафіксовано повідомлення про вибоїну</p>
 
 <p><a href='https://www.waze.com/uk/livemap?zoom=17&lat={{location.y}}&lon={{location.x}}'>Координати події</a></p>
 
