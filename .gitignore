@@ -1,5 +1,4 @@
 # files
-package-lock.json
 *.cache
 
 # dirs
