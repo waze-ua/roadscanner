@@ -6,7 +6,7 @@
     "debug": "^3.1.0",
     "luxon": "^0.2.12",
     "mustache": "^2.3.0",
-    "nodemailer": "^6.7.2"
+    "nodemailer": "^6.9.9"
   },
   "description": "Server to scan Waze for road events and send emails to servicing companies"
 }
